@@ -1,0 +1,70 @@
+---
+- name: Install Docker and PostgreSQL on servers
+  hosts: all
+  become: true
+  tasks:
+    - name: Gathering Facts
+      gather_facts:
+
+    - name: Install Docker on Ubuntu
+      when: ansible_os_family == "Debian"
+      become: true
+      apt:
+        update_cache: yes
+        name: docker.io
+
+    - name: Add Docker CE repository for CentOS
+      when: ansible_os_family == "RedHat"
+      become: true
+      command:
+        cmd: dnf -y install dnf-plugins-core
+        warn: no
+
+    - name: Install Docker on CentOS
+      when: ansible_os_family == "RedHat"
+      become: true
+      command: dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo && dnf install -y docker-ce
+
+    - name: Start Docker service
+      become: true
+      service:
+        name: docker
+        state: started
+
+    - name: Install PostgreSQL on Ubuntu
+      when: ansible_os_family == "Debian"
+      become: true
+      apt:
+        update_cache: yes
+        name:
+          - postgresql
+          - postgresql-contrib
+
+    - name: Install PostgreSQL on CentOS
+      when: ansible_os_family == "RedHat"
+      become: true
+      command: dnf install -y postgresql-server postgresql-contrib
+	 - name: Create PostgreSQL data directory
+      when: ansible_os_family == "Debian"
+      become: true
+      file:
+        path: /var/lib/postgresql/data
+        state: directory
+        owner: postgres
+        group: postgres
+        mode: 0700
+
+    - name: Create PostgreSQL data directory on CentOS
+      when: ansible_os_family == "RedHat"
+      become: true
+      file:
+        path: /var/lib/pgsql/data
+        state: directory
+        owner: postgres
+        group: postgres
+        mode: 0700
+
+    - name: Initialize PostgreSQL database
+      become: true
+      command: postgresql-setup --initdb
+      when: ansible_os_family == "RedHat"
